@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">weather-send</string>
+
+    <string name="date_label">Date: </string>
+    <string name="tmx_label">TMX: </string>
+    <string name="tmn_label">TMN: </string>
+    <string name="sky_label">SKY: </string>
+    <string name="pty_label">PTY: </string>
+
+    <string name="connect_button">Connect</string>
+    <string name="send_time_button">Send Time</string>
+
+    <string name="weather_url">http://newsky2.kma.go.kr/service/SecndSrtpdFrcstInfoService2/ForecastSpaceData</string>
+    <string name="weather_key">TBhxDClJJbY/mbFaGJ4NmcZXZXnW+R1pkem2vGZZ83/MyL5rfqOOUtbp5th/df8gEeNlcu3jVkj6DyFvW6kiJQ==</string>
+    <string name="weather_key_query">TBhxDClJJbY%2FmbFaGJ4NmcZXZXnW%2BR1pkem2vGZZ83%2FMyL5rfqOOUtbp5th%2Fdf8gEeNlcu3jVkj6DyFvW6kiJQ%3D%3D</string>
+</resources>
