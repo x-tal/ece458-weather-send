@@ -22,6 +22,8 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import cz.msebera.android.httpclient.Header;
 
@@ -39,13 +41,22 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     private TextView tvSendTime;
     private Button btConnect;
     private Button btSendTime;
+    private Button btNorain;
+    private Button btRain;
 
     //
     private BluetoothService btService;
     private BluetoothThread btThread;
     private Handler btHandler;
+
     private AsyncHttpClient client;
     private Date nowDate;       // base 날짜
+
+    // Timer
+    private TimerTask timerTask;
+    private Timer timer;
+
+    private Handler updateLabelHandler;
 
     // 발송 bytes
     private byte[] weather;
@@ -72,7 +83,8 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         tvSendTime = (TextView) findViewById(R.id.send_time);
         btConnect = (Button) findViewById(R.id.connect_button);
         btSendTime = (Button) findViewById(R.id.send_time_button);
-
+        btNorain = (Button) findViewById(R.id.send_norain_weather_button);
+        btRain = (Button) findViewById(R.id.send_rain_weather_button);
 
         // listener
         btConnect.setOnClickListener(new View.OnClickListener() {
@@ -101,15 +113,56 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         btSendTime.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(TAG, "Send");
-                btThread.write(weather);
-                btThread.write(time);
+                sendTime();
+            }
+        });
+
+        btNorain.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pty = 0;
+                sendWeather();
+            }
+        });
+
+        btRain.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pty = 1;
+                sendWeather();
             }
         });
 
         // byte init
         weather = new byte[8];
         time = new byte[8];
+
+        // http
+        client = new AsyncHttpClient();
+
+        // timer
+        timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                updateWeatherBytes();
+                updateTimeBytes();
+
+                sendWeather();
+                sendTime();
+
+                // label update
+                updateLabels();
+            }
+        };
+
+        timer = new Timer();
+        updateLabelHandler = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                super.handleMessage(msg);
+                updateLabelsByHandler();
+            }
+        };
 
         requestWeather();
     }
@@ -136,8 +189,6 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         String basedate = sdf.format(targetDate);
         String basetime = "2000";
 
-        client = new AsyncHttpClient();
-
         RequestParams params = new RequestParams();
         params.add("ServiceKey", key);
         params.add("base_date", basedate);
@@ -152,11 +203,14 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         client.get(base, params, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                Log.d(TAG, "=============== SUCCESS ===============");
                 String body = new String(responseBody);
                 Log.d(TAG, body);
+
                 parseJson(body);
-                updateBytes();
-                updateLabels();
+
+                // timer 통해 send data
+                timer.schedule(timerTask, 0, 18000000);
             }
 
             @Override
@@ -206,7 +260,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         }
     }
 
-    private void updateLabels() {
+    private void updateLabelsByHandler() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         tvToday.setText(sdf.format(nowDate));
 
@@ -229,7 +283,11 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         tvSendTime.setText(t.toString());
     }
 
-    private void updateBytes() {
+    private void updateLabels() {
+        updateLabelHandler.sendEmptyMessage(0);
+    }
+
+    private void updateWeatherBytes() {
         int weatherCode = sky * 4 + pty;
         int intTmx = (int) Math.round(tmx);
         int intTmn = (int) Math.round(tmn);
@@ -247,7 +305,9 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         weather[5] = (byte) (0x30 + tmnTen);
         weather[6] = (byte) (0x30 + tmnOne);
         weather[7] = 0x03;
+    }
 
+    private void updateTimeBytes() {
         Date now = new Date();
         Calendar calendar = GregorianCalendar.getInstance();
         calendar.setTime(now);
@@ -266,8 +326,28 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         time[3] = (byte) (0x30 + hourOne);
         time[4] = (byte) (0x30 + minTen);
         time[5] = (byte) (0x30 + minOne);
-        time[6] = 0x00 ;
+        time[6] = 0x00;
         time[7] = 0x03;
+    }
+
+    private void sendWeather() {
+        updateWeatherBytes();
+        updateLabels();
+
+        if (btThread != null) {
+            Log.d(TAG, "Send weather");
+            btThread.write(weather);
+        }
+    }
+
+    private void sendTime() {
+        updateTimeBytes();
+        updateLabels();
+
+        if (btThread != null) {
+            Log.d(TAG, "Send time");
+            btThread.write(time);
+        }
     }
 
     @Override

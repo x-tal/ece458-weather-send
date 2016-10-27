@@ -56,7 +56,7 @@ public class BluetoothService {
 				
 				// Temply. 
 				if (device.getName().equals("Sunk")) {
-					Log.d(TAG, "SUCCESS to yeop");
+					Log.d(TAG, "SUCCESS to sunk");
 					return device;
 				}
 			}

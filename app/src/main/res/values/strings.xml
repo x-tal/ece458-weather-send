@@ -9,6 +9,8 @@
 
     <string name="connect_button">Connect</string>
     <string name="send_time_button">Send Time</string>
+    <string name="send_norain_weather_button">Set NO RAIN</string>
+    <string name="send_rain_weather_button">Set RAIN</string>
 
     <string name="weather_url">http://newsky2.kma.go.kr/service/SecndSrtpdFrcstInfoService2/ForecastSpaceData</string>
     <string name="weather_key">TBhxDClJJbY/mbFaGJ4NmcZXZXnW+R1pkem2vGZZ83/MyL5rfqOOUtbp5th/df8gEeNlcu3jVkj6DyFvW6kiJQ==</string>
