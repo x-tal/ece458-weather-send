@@ -48,14 +48,14 @@ public class BluetoothService {
 		return this.btAdapter.getBondedDevices();
 	}
 	
-	public BluetoothDevice eceDevice() {
+	public BluetoothDevice getEceDevice() {
 		Set<BluetoothDevice> pairedDevices = this.getBondedDevices();
 		if (pairedDevices.size() > 0) {
 			for (BluetoothDevice device : pairedDevices) {
 				Log.d(TAG, device.getName() + ", " + device.getAddress());
 				
 				// Temply. 
-				if (device.getName().equals("yeop")) {
+				if (device.getName().equals("Sunk")) {
 					Log.d(TAG, "SUCCESS to yeop");
 					return device;
 				}

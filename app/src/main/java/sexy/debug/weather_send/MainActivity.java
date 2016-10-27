@@ -1,8 +1,12 @@
 package sexy.debug.weather_send;
 
+import android.bluetooth.BluetoothDevice;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -21,7 +25,7 @@ import java.util.GregorianCalendar;
 
 import cz.msebera.android.httpclient.Header;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements Handler.Callback {
 
     public final static String TAG = "WEATHERSEND";
 
@@ -37,6 +41,9 @@ public class MainActivity extends AppCompatActivity {
     private Button btSendTime;
 
     //
+    private BluetoothService btService;
+    private BluetoothThread btThread;
+    private Handler btHandler;
     private AsyncHttpClient client;
     private Date nowDate;       // base 날짜
 
@@ -66,7 +73,39 @@ public class MainActivity extends AppCompatActivity {
         btConnect = (Button) findViewById(R.id.connect_button);
         btSendTime = (Button) findViewById(R.id.send_time_button);
 
-        // TODO: button listener
+
+        // listener
+        btConnect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // bluetooth
+                btHandler = new Handler(MainActivity.this);
+                btService = new BluetoothService(MainActivity.this, btHandler);
+                BluetoothDevice sunk = btService.getEceDevice();
+                if (sunk == null) {
+                    Log.d(TAG, "Failed to find sunk");
+                    return;
+                }
+
+                btThread = new BluetoothThread(sunk);
+                if (!btService.getDeviceState()) {
+                    Log.d(TAG, "Service Fail and Enable");
+                    btService.enableBluetooth();
+                }
+
+                Log.d(TAG, "Click button and success.");
+                btThread.start();
+            }
+        });
+
+        btSendTime.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "Send");
+                btThread.write(weather);
+                btThread.write(time);
+            }
+        });
 
         // byte init
         weather = new byte[8];
@@ -229,5 +268,10 @@ public class MainActivity extends AppCompatActivity {
         time[5] = (byte) (0x30 + minOne);
         time[6] = 0x00 ;
         time[7] = 0x03;
+    }
+
+    @Override
+    public boolean handleMessage(Message msg) {
+        return false;
     }
 }

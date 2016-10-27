@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -17,7 +18,8 @@ public class BluetoothThread extends Thread {
 
 	private BluetoothSocket mmSocket;
 	private InputStream mmInStream;
-	
+	private OutputStream mmOutStream;
+
 	public BluetoothThread(BluetoothDevice device) {
 		try {
 			this.mmSocket = device.createRfcommSocketToServiceRecord(BluetoothService.MY_UUID);
@@ -29,6 +31,7 @@ public class BluetoothThread extends Thread {
 			Log.d(TAG, "AcceptThread create");
 			try {
 				this.mmInStream = this.mmSocket.getInputStream();
+				this.mmOutStream = this.mmSocket.getOutputStream();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -51,20 +54,26 @@ public class BluetoothThread extends Thread {
 				String inputLine;
 				while((inputLine = br.readLine()) != null) {
 					String message = inputLine;
-					Log.d(TAG, message);
+					String result = "";
+					for (int i = 0; i < message.length(); i++) {
+						result += String.format("%02X", (int) message.charAt(i));
+					}
+
+					Log.d(TAG, result);
 				}
 			} catch (IOException e) {
 				// Bluetooth data 못받아 올 시의 임시 처리.
 				e.printStackTrace();
-				try {
-//					if (this.mmSocket.isConnected() == true) {
-//						this.mmSocket.close();
-//					}
-					this.mmSocket.connect();
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
 			}
+		}
+	}
+
+	public void write(byte[] bytes) {
+		try {
+			mmOutStream.write(bytes);
+			mmOutStream.write(0x0A);		// for line break
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 	
