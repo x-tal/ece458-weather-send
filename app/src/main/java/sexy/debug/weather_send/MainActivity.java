@@ -3,11 +3,13 @@ package sexy.debug.weather_send;
 import android.bluetooth.BluetoothDevice;
 import android.os.Handler;
 import android.os.Message;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.loopj.android.http.AsyncHttpClient;
@@ -27,11 +29,13 @@ import java.util.TimerTask;
 
 import cz.msebera.android.httpclient.Header;
 
-public class MainActivity extends AppCompatActivity implements Handler.Callback {
+public class MainActivity extends AppCompatActivity
+        implements Handler.Callback, BluetoothThread.BluetoothThreadListener {
 
     public final static String TAG = "WEATHERSEND";
 
     // UI
+    private LinearLayout contentRoot;
     private TextView tvToday;
     private TextView tvTmx;
     private TextView tvTmn;
@@ -46,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
 
     //
     private BluetoothService btService;
+    private BluetoothDevice sunk;
     private BluetoothThread btThread;
     private Handler btHandler;
 
@@ -74,6 +79,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         setContentView(R.layout.activity_main);
 
         // ui init
+        contentRoot = (LinearLayout) findViewById(R.id.content_root);
         tvToday = (TextView) findViewById(R.id.today);
         tvTmx = (TextView) findViewById(R.id.tmx);
         tvTmn = (TextView) findViewById(R.id.tmn);
@@ -90,23 +96,20 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         btConnect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // bluetooth
-                btHandler = new Handler(MainActivity.this);
-                btService = new BluetoothService(MainActivity.this, btHandler);
-                BluetoothDevice sunk = btService.getEceDevice();
-                if (sunk == null) {
-                    Log.d(TAG, "Failed to find sunk");
-                    return;
-                }
-
-                btThread = new BluetoothThread(sunk);
-                if (!btService.getDeviceState()) {
-                    Log.d(TAG, "Service Fail and Enable");
-                    btService.enableBluetooth();
-                }
-
                 Log.d(TAG, "Click button and success.");
-                btThread.start();
+                if (btThread != null && btThread.isAlive()) {
+                    btThread.interrupt();
+                    btThread.cancel();
+                    btThread = null;
+                } else {
+                    btThread = new BluetoothThread(sunk, MainActivity.this);
+                    if (!btService.getDeviceState()) {
+                        Log.d(TAG, "Service Fail and Enable");
+                        btService.enableBluetooth();
+                    }
+
+                    btThread.start();
+                }
             }
         });
 
@@ -156,6 +159,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         };
 
         timer = new Timer();
+//        timer.schedule(timerTask, 0, 18000000);
         updateLabelHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -164,7 +168,19 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
             }
         };
 
+        createBluetooth();
         requestWeather();
+    }
+
+    private void createBluetooth() {
+        // bluetooth
+        btHandler = new Handler(MainActivity.this);
+        btService = new BluetoothService(MainActivity.this, btHandler);
+        sunk = btService.getEceDevice();
+        if (sunk == null) {
+            Log.d(TAG, "Failed to find sunk");
+            return;
+        }
     }
 
     private void requestWeather() {
@@ -187,7 +203,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
 
         // time
         String basedate = sdf.format(targetDate);
-        String basetime = "2000";
+        String basetime = "2300";
 
         RequestParams params = new RequestParams();
         params.add("ServiceKey", key);
@@ -206,11 +222,8 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
                 Log.d(TAG, "=============== SUCCESS ===============");
                 String body = new String(responseBody);
                 Log.d(TAG, body);
-
                 parseJson(body);
-
-                // timer 통해 send data
-                timer.schedule(timerTask, 0, 18000000);
+                updateLabels();
             }
 
             @Override
@@ -353,5 +366,18 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     @Override
     public boolean handleMessage(Message msg) {
         return false;
+    }
+
+    @Override
+    public void connected() {
+        // timer 통해 send data
+        timer.schedule(timerTask, 0, 30000);
+
+        Snackbar.make(contentRoot, "Connected bluetooth", Snackbar.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void disconnected() {
+        Snackbar.make(contentRoot, "Disconnected bluetooth", Snackbar.LENGTH_LONG).show();
     }
 }
